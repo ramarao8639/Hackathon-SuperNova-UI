@@ -1,0 +1,10 @@
+# AI-Generated: UI git ignore
+# Generated-Date: 2026-10-28
+# Description: Keeps installed packages and build output out of the UI repo.
+
+node_modules/
+dist/
+*.tsbuildinfo
+
+.DS_Store
+Thumbs.db
