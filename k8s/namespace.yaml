@@ -1,0 +1,8 @@
+# AI-Generated: Shared application namespace
+# Generated-Date: 2026-10-28
+# Description: Namespace for the web app and the API.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: supernova

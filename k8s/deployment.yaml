@@ -1,0 +1,44 @@
+# AI-Generated: UI deployment
+# Generated-Date: 2026-10-28
+# Description: Serves the web app and proxies /api to the backend service. CI replaces the image tag.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supernova-ui
+  namespace: supernova
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: supernova-ui
+  template:
+    metadata:
+      labels:
+        app: supernova-ui
+    spec:
+      containers:
+        - name: web
+          image: 663505294404.dkr.ecr.us-east-1.amazonaws.com/supernova-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: API_UPSTREAM
+              value: http://supernova-backend.supernova.svc.cluster.local:8000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi

@@ -1,0 +1,69 @@
+# AI-Generated: UI deploy workflow
+# Generated-Date: 2026-10-28
+# Description: Builds the web image, pushes it to ECR, and rolls the EKS deployment.
+
+name: ui-deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'supernova-ui' }}
+      EKS_CLUSTER: ${{ vars.EKS_CLUSTER || 'supernova' }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN || 'arn:aws:iam::663505294404:role/supernova-github-deploy' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-skip-session-tagging: true
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - name: Build and push
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      - uses: azure/setup-kubectl@v4
+      - name: Point the cluster at the new image
+        run: |
+          aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+          kubectl apply -f k8s/namespace.yaml
+          sed "s#663505294404.dkr.ecr.us-east-1.amazonaws.com/supernova-ui:latest#${IMAGE}#" k8s/deployment.yaml | kubectl apply -f -
+          kubectl apply -f k8s/service.yaml
+          kubectl -n supernova rollout status deployment/supernova-ui || {
+            kubectl -n supernova get pods -l app=supernova-ui
+            kubectl -n supernova logs -l app=supernova-ui --tail=40 --prefix=true
+            exit 1
+          }
+          hostname=""
+          for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            hostname=$(kubectl -n supernova get svc supernova-ui -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            if [ -n "$hostname" ]; then
+              break
+            fi
+            sleep 10
+          done
+          if [ -n "$hostname" ]; then
+            echo "UI address http://$hostname"
+          else
+            echo "UI service is applied. The public address is still pending."
+          fi
