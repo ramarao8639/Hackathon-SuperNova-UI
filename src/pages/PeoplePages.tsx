@@ -226,11 +226,20 @@ export function ApprovalsPage() {
           </p>
           <p>{formatDate(item.start_on)} to {formatDate(item.end_on)} · {item.days} day{item.days === 1 ? "" : "s"}</p>
           {item.hint ? (
-            <p>
-              Balance after approval: {item.hint.balance_after ?? "unchanged"}.
-              {item.hint.clashes.length ? ` Also off: ${item.hint.clashes.map((clash) => clash.name).join(", ")}.` : " No team clashes."}
-              {item.hint.flags.length ? ` ${item.hint.flags.join(". ")}` : ""}
-            </p>
+            <div className="card" style={{ background: "#f4faf6", fontSize: 13, marginBottom: 8 }}>
+              <p className="mono" style={{ marginBottom: 4 }}>Genie hint</p>
+              {item.hint.balance_after !== null ? (
+                <p>Balance after approval: <strong>{item.hint.balance_after} days</strong>.</p>
+              ) : null}
+              {item.hint.clashes.length ? (
+                <p>Also off those days: <strong>{item.hint.clashes.map((c) => c.name).join(", ")}</strong>.</p>
+              ) : (
+                <p>No team clashes.</p>
+              )}
+              {item.hint.flags.map((flag) => (
+                <p key={flag} style={{ color: "#b3352a" }}>⚠ {flag}</p>
+              ))}
+            </div>
           ) : null}
           <div className="row-actions">
             <button className="btn gold" type="button" onClick={() => decide.mutate({ id: item.id, action: "approve", comment: "" })}>Approve</button>
