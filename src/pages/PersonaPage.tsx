@@ -3,7 +3,7 @@
 // Description: Hero greeting + ask bar, "Where you stand" feed, journey timeline, leave/learning pair,
 // combined career-and-performance card, and a pay reveal card - same shape as the prototype's single column
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query"
+import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 import { api } from "../api/client"
@@ -52,6 +52,34 @@ type Row = { id: string; title: string; detail: string; due: string; kind: "bad"
 export function PersonaPage() {
   const { user } = useAuth()
   const { ask } = useGenie()
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!user) return
+    const source = new EventSource("/api/me/persona/stream", { withCredentials: true })
+    const onLeave = () => {
+      void queryClient.invalidateQueries({ queryKey: ["persona", "leave"] })
+    }
+    source.addEventListener("leave", onLeave)
+    const onLearning = () => {
+      void queryClient.invalidateQueries({ queryKey: ["persona", "learning"] })
+    }
+    source.addEventListener("learning", onLearning)
+    const onPay = () => {
+      void queryClient.invalidateQueries({ queryKey: ["persona", "pay"] })
+    }
+    const onPerformance = () => {
+      void queryClient.invalidateQueries({ queryKey: ["persona", "performance"] })
+    }
+    source.addEventListener("pay", onPay)
+    source.addEventListener("performance", onPerformance)
+    return () => {
+      source.removeEventListener("leave", onLeave)
+      source.removeEventListener("learning", onLearning)
+      source.removeEventListener("pay", onPay)
+      source.removeEventListener("performance", onPerformance)
+      source.close()
+    }
+  }, [queryClient, user])
   const summary = useQuery({
     queryKey: ["summary", user?.id],
     enabled: Boolean(user),
@@ -80,10 +108,11 @@ export function PersonaPage() {
     period?: string
     goals?: { name: string; weight: number; progress: number }[]
     as_of?: string
+    notice?: string
   }>("performance")
-  const pay = useCard<{ state?: string; message?: string; annual_ctc?: number; effective_on?: string; lines?: { label: string; amount: number }[]; as_of?: string }>("pay")
-  const leave = useCard<{ balance_days: string; as_of?: string; state?: string }>("leave")
-  const learning = useCard<{ state?: string; message?: string; completed_hours: number; target_hours: number; pending: { title: string; source: string; due_on: string }[]; as_of?: string }>("learning")
+  const pay = useCard<{ state?: string; message?: string; annual_ctc?: number; effective_on?: string; lines?: { label: string; amount: number }[]; as_of?: string; notice?: string }>("pay")
+  const leave = useCard<{ balance_days: string; as_of?: string; state?: string; notice?: string }>("leave")
+  const learning = useCard<{ state?: string; message?: string; completed_hours: number; target_hours: number; pending: { title: string; source: string; due_on: string }[]; as_of?: string; notice?: string }>("learning")
   const documents = useQuery({ queryKey: ["documents", "all"], queryFn: () => api<DocList>("/me/documents?tab=all") })
 
   useEffect(() => {
@@ -214,6 +243,7 @@ export function PersonaPage() {
                 <h3>Leave and holidays</h3>
                 <div className="big-num"><CountUp value={Number(leave.data?.balance_days ?? 0)} decimals={1} /></div>
                 <p className="muted">days in hand</p>
+                {leave.data?.notice ? <div className="source-chip">{leave.data.notice}</div> : null}
                 <div className="row" style={{ marginTop: 12 }}>
                   <Link className="btn sm" to="/hrms/apply">Apply leave</Link>
                   <Link className="btn ghost sm" to="/hrms/dashboard">All balances</Link>
@@ -234,6 +264,7 @@ export function PersonaPage() {
                       <Link className="btn ghost sm" to="/lms/learning">Learning Hub</Link>
                     </div>
                     <div className="bar"><span style={{ width: `${((learning.data?.completed_hours ?? 0) / Math.max(learning.data?.target_hours ?? 1, 1)) * 100}%` }} /></div>
+                    {learning.data?.notice ? <div className="source-chip">{learning.data.notice}</div> : null}
                     {learning.data?.pending.length ? (
                       learning.data.pending.map((item) => (
                         <div key={item.title} className="feed">
@@ -290,6 +321,7 @@ export function PersonaPage() {
                       </div>
                     </div>
                   ))}
+                  {performance.data?.notice ? <div className="source-chip">{performance.data.notice}</div> : null}
                 </>
               ))}
             </Frame>
@@ -318,6 +350,7 @@ export function PersonaPage() {
                   </ul>
                 ) : null}
                 <p className="tiny muted" style={{ marginTop: 8 }}>Hidden by default. Never written to logs.</p>
+                {pay.data?.notice ? <div className="source-chip">{pay.data.notice}</div> : null}
                 <p><Link to="/hrms/finances">Open Pay and benefits</Link></p>
               </>
             ))}
