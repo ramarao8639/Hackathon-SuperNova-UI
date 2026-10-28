@@ -2,7 +2,7 @@
 // Generated-Date: 2026-10-26
 // Description: Learning Hub home, catalog, schedule, transcript, and manager pages from LearnHub
 
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { api } from "../api/client"
@@ -48,7 +48,7 @@ type Hub = {
   welcome: string
   completed_hours: number
   target_hours: number
-  action_items: { label: string; due_label: string }[]
+  action_items: { label: string; due_label: string; course_id?: string; part?: number }[]
   tasks: { title: string; detail: string; action: string }[]
   registrations: Registration[]
   sessions: Session[]
@@ -97,25 +97,56 @@ function VideoSave() {
     queryFn: () => api<{ course_id: string; title: string }>("/learning/me/buddy"),
   })
   const courseId = buddy.data?.course_id ?? ""
+  const progress = useQuery({
+    queryKey: ["video-progress", courseId],
+    enabled: Boolean(courseId),
+    queryFn: () => api<{ seconds: number; length: number; idle_after: number; slot_seconds: number }>(`/learning/courses/${courseId}/progress?part=0`),
+  })
   const [saved, setSaved] = useState(0)
+  const [mode, setMode] = useState<"playing" | "paused" | "ended">("playing")
+  const started = progress.data?.seconds ?? 0
+  const slot = progress.data?.slot_seconds ?? progress.data?.length ?? 0
+  const idleAfter = (progress.data?.idle_after ?? 60) * 1000
   useEffect(() => {
-    if (!courseId) return
-    let seconds = 0
+    if (!courseId || !progress.data || mode !== "playing") return
+    let seconds = Math.max(saved, started)
     const timer = window.setInterval(() => {
-      seconds += 10
+      seconds = Math.min(seconds + 10, slot)
       void api<{ seconds: number }>(`/learning/courses/${courseId}/progress`, {
         method: "POST",
         body: JSON.stringify({ part: 0, seconds }),
-      }).then((body) => setSaved(body.seconds))
+      }).then((body) => {
+        setSaved(body.seconds)
+        if (body.seconds >= slot) setMode("ended")
+      })
     }, 10000)
     return () => window.clearInterval(timer)
-  }, [courseId])
-  if (!courseId) return null
+  }, [courseId, idleAfter, mode, progress.data, saved, slot, started])
+  useEffect(() => {
+    if (!progress.data || mode === "ended") return
+    let last = Date.now()
+    const mark = () => {
+      last = Date.now()
+      setMode((current) => (current === "paused" ? "playing" : current))
+    }
+    const watch = window.setInterval(() => {
+      if (Date.now() - last >= idleAfter) setMode("paused")
+    }, 1000)
+    window.addEventListener("pointermove", mark)
+    window.addEventListener("keydown", mark)
+    return () => {
+      window.clearInterval(watch)
+      window.removeEventListener("pointermove", mark)
+      window.removeEventListener("keydown", mark)
+    }
+  }, [idleAfter, mode, progress.data])
+  if (!courseId || !progress.data) return null
+  const note = mode === "ended" ? "This learning slot has ended." : mode === "paused" ? "Paused because you stepped away." : saved > 0 ? `Saved ${saved}s` : "Progress saves every 10 seconds."
   return (
     <section className="card" aria-label="Course video">
       <h2>{buddy.data?.title}</h2>
       <div className="bar" role="img" aria-label="Video canvas" />
-      <p className="muted">{saved > 0 ? `Saved ${saved}s` : "Progress saves every 10 seconds."}</p>
+      <p className="muted">{note}</p>
     </section>
   )
 }
@@ -131,6 +162,19 @@ function Buddy() {
       <h2>Buddy</h2>
       <p><Link to={buddy.data.href}>{buddy.data.step}</Link></p>
     </section>
+  )
+}
+
+function AckButton({ courseId, part }: { courseId: string; part: number }) {
+  const queryClient = useQueryClient()
+  const ack = useMutation({
+    mutationFn: () => api(`/learning/courses/${courseId}/acknowledge`, { method: "POST", body: JSON.stringify({ part }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["learning"] }),
+  })
+  return (
+    <button className="btn ghost sm" type="button" onClick={() => ack.mutate()}>
+      Acknowledge
+    </button>
   )
 }
 
@@ -218,7 +262,12 @@ export function LearningPage() {
                     <tbody>
                       {data.action_items.map((item) => (
                         <tr key={item.label}>
-                          <td><span className="lnk">{item.label}</span></td>
+                          <td>
+                            <span className="lnk">{item.label}</span>
+                            {item.course_id !== undefined && item.part !== undefined ? (
+                              <> <AckButton courseId={item.course_id} part={item.part} /></>
+                            ) : null}
+                          </td>
                           <td className="num small">{item.due_label === "None" ? "None" : formatDate(item.due_label)}</td>
                         </tr>
                       ))}
