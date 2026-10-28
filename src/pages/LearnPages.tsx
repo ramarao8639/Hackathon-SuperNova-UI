@@ -577,6 +577,36 @@ export function TranscriptPage() {
   )
 }
 
+function SponsorshipQueue() {
+  const queryClient = useQueryClient()
+  const queue = useQuery({
+    queryKey: ["sponsorship-team"],
+    queryFn: () => api<{ items: { id: string; employee: string; course: string; status: string }[] }>("/learning/team/sponsorship"),
+  })
+  const decide = useMutation({
+    mutationFn: (id: string) => api(`/learning/sponsorship/${id}/manager`, { method: "POST", body: JSON.stringify({ status: "approved" }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sponsorship-team"] }),
+  })
+  const items = queue.data?.items ?? []
+  if (!items.length) return null
+  return (
+    <section className="cs">
+      <h3>Sponsorship requests</h3>
+      <div className="in">
+        {items.map((item) => (
+          <div className="task-row" key={item.id}>
+            <div>
+              <strong>{item.employee}</strong>
+              <p className="tiny muted">{item.course}</p>
+            </div>
+            <button className="btn sm" type="button" onClick={() => decide.mutate(item.id)}>Approve</button>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export function TeamProgressPage() {
   const learning = useHub()
   const data = learning.data
@@ -588,6 +618,7 @@ export function TeamProgressPage() {
           <p className="muted">Enrolment requests, assigned programmes and progress for your team.</p>
         </div>
       </div>
+      <SponsorshipQueue />
       {learning.isPending ? <p className="muted">Loading team progress.</p> : null}
       {data?.enrolment_requests.length ? (
         <section className="cs">

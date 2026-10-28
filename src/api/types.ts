@@ -2,7 +2,7 @@
 // Generated-Date: 2026-10-26
 // Description: Shapes returned by the FastAPI app
 
-export type Role = "employee" | "manager" | "hr_admin" | "learning_admin" | "sys_admin"
+export type Role = "employee" | "manager" | "hr_admin" | "learning_admin" | "finance" | "it_admin" | "sys_admin"
 
 export type User = {
   id: string

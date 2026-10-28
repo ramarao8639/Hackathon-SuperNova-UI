@@ -3,6 +3,7 @@
 // Description: Licensed courses, sync, inactivity, and a skill radar
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
 import { api, ApiError } from "../api/client"
 import { useToast } from "../components/toast"
 
@@ -26,6 +27,43 @@ type Enrolment = {
 
 function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : "Something went wrong"
+}
+
+function SponsorshipForm() {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [course, setCourse] = useState("Python for Analysts")
+  const [amount, setAmount] = useState("4200")
+  const mine = useQuery({
+    queryKey: ["sponsorship"],
+    queryFn: () => api<{ items: { id: string; course: string; amount: number; status: string }[] }>("/learning/me/sponsorship"),
+  })
+  const submit = useMutation({
+    mutationFn: () => api("/learning/me/sponsorship", { method: "POST", body: JSON.stringify({ course, amount: Number(amount) }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorship"] })
+      toast("Sponsorship requested. It is not paid yet.")
+    },
+    onError: (error) => toast(error instanceof ApiError ? error.message : "Request failed"),
+  })
+  return (
+    <article className="card">
+      <h2>Course sponsorship</h2>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          submit.mutate()
+        }}
+      >
+        <input aria-label="Sponsorship course" value={course} onChange={(event) => setCourse(event.target.value)} />
+        <input aria-label="Sponsorship amount" type="number" min={1} value={amount} onChange={(event) => setAmount(event.target.value)} />
+        <button className="btn sm" type="submit">Request sponsorship</button>
+      </form>
+      {(mine.data?.items ?? []).map((item) => (
+        <p key={item.id}>{item.course} · {item.status} · {item.amount}</p>
+      ))}
+    </article>
+  )
 }
 
 export function UdemyPage() {
@@ -125,6 +163,7 @@ export function UdemyPage() {
           </p>
         ))}
       </article>
+      <SponsorshipForm />
     </section>
   )
 }

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { Link } from "react-router"
 import { api, ApiError } from "../api/client"
+import { useAuth } from "../auth/AuthProvider"
 import { useToast } from "../components/toast"
 import { inr } from "../format"
 
@@ -33,6 +34,7 @@ function messageOf(error: unknown): string {
 }
 
 export function FinancesPage() {
+  const { user } = useAuth()
   const [tab, setTab] = useState<(typeof TABS)[number]>("Summary")
   const summary = useQuery({ queryKey: ["pay-summary"], queryFn: () => api<Summary>("/pay/me/summary") })
   const data = summary.data
@@ -57,6 +59,7 @@ export function FinancesPage() {
       {tab === "Retirement" ? <PfTab /> : null}
       {tab === "Documents" ? <DocumentsTab /> : null}
       {tab === "Care" ? <CareTab /> : null}
+      {user?.role === "finance" ? <FinanceSponsorship /> : null}
     </section>
   )
 }
@@ -297,6 +300,30 @@ function CareTab() {
       ))}
       <h2>Maternity and paternity</h2>
       <p>Eligibility uses your join date on your profile. A request goes to HR. EAP and emergency contacts are on the HR desk.</p>
+    </article>
+  )
+}
+
+function FinanceSponsorship() {
+  const queryClient = useQueryClient()
+  const queue = useQuery({
+    queryKey: ["sponsorship-finance"],
+    queryFn: () => api<{ items: { id: string; course: string; amount: number; status: string }[] }>("/learning/finance/sponsorship"),
+  })
+  const decide = useMutation({
+    mutationFn: (id: string) => api(`/learning/sponsorship/${id}/finance`, { method: "POST", body: JSON.stringify({ status: "approved" }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sponsorship-finance"] }),
+  })
+  return (
+    <article className="card">
+      <h2>Course sponsorship</h2>
+      {(queue.data?.items ?? []).map((item) => (
+        <p key={item.id}>
+          {item.course} · {inr(item.amount)}{" "}
+          <button className="btn sm" type="button" onClick={() => decide.mutate(item.id)}>Reimburse</button>
+        </p>
+      ))}
+      {queue.data && queue.data.items.length === 0 ? <p>No sponsorship is waiting for finance.</p> : null}
     </article>
   )
 }
