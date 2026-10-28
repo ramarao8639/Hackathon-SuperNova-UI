@@ -3,7 +3,7 @@
 // Description: Learning Hub home, catalog, schedule, transcript, and manager pages from LearnHub
 
 import { useQuery } from "@tanstack/react-query"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { api } from "../api/client"
 import { useAuth } from "../auth/AuthProvider"
@@ -91,6 +91,35 @@ function Badges() {
   )
 }
 
+function VideoSave() {
+  const buddy = useQuery({
+    queryKey: ["learning-buddy"],
+    queryFn: () => api<{ course_id: string; title: string }>("/learning/me/buddy"),
+  })
+  const courseId = buddy.data?.course_id ?? ""
+  const [saved, setSaved] = useState(0)
+  useEffect(() => {
+    if (!courseId) return
+    let seconds = 0
+    const timer = window.setInterval(() => {
+      seconds += 10
+      void api<{ seconds: number }>(`/learning/courses/${courseId}/progress`, {
+        method: "POST",
+        body: JSON.stringify({ part: 0, seconds }),
+      }).then((body) => setSaved(body.seconds))
+    }, 10000)
+    return () => window.clearInterval(timer)
+  }, [courseId])
+  if (!courseId) return null
+  return (
+    <section className="card" aria-label="Course video">
+      <h2>{buddy.data?.title}</h2>
+      <div className="bar" role="img" aria-label="Video canvas" />
+      <p className="muted">{saved > 0 ? `Saved ${saved}s` : "Progress saves every 10 seconds."}</p>
+    </section>
+  )
+}
+
 function Buddy() {
   const buddy = useQuery({
     queryKey: ["learning-buddy"],
@@ -161,6 +190,7 @@ export function LearningPage() {
         ) : null}
       </div>
       <Buddy />
+      <VideoSave />
       <Badges />
       {learning.isPending ? <p className="muted">Loading your programmes.</p> : null}
       {learning.isError ? <p className="note bad">Learning Hub could not load your programmes. Refresh and try again.</p> : null}
