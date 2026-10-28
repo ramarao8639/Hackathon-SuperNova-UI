@@ -5,7 +5,7 @@
 import { useState } from "react"
 import { api } from "../api/client"
 import { useToast } from "../components/toast"
-import { composeMail } from "./mailLinks"
+import { composeMail, copyText, DEFAULT_MAIL } from "./mailLinks"
 
 export function MailActions({
   to,
@@ -25,14 +25,20 @@ export function MailActions({
   const [tone, setTone] = useState("Friendly")
   const [show, setShow] = useState(false)
   const { toast } = useToast()
-  const draft = composeMail({ to, cc, subject, body, tone })
+  const recipients = to.length ? to : [DEFAULT_MAIL]
+  const draft = composeMail({ to: recipients, cc, subject, body, tone })
 
   function note() {
-    void api("/notifications/draft-log", { method: "POST", body: JSON.stringify({ topic, recipients: to.length + cc.length }) })
+    void api("/notifications/draft-log", { method: "POST", body: JSON.stringify({ topic, recipients: recipients.length + cc.length }) })
+  }
+
+  function openOutlook() {
+    note()
+    window.location.href = draft.mailto
   }
 
   function eml() {
-    const file = `To: ${to.join(", ")}\nCc: ${cc.join(", ")}\nSubject: ${subject}\n\n${draft.preview}`
+    const file = `To: ${recipients.join(", ")}\nCc: ${cc.join(", ")}\nSubject: ${subject}\n\n${draft.preview}`
     const blob = new Blob([file], { type: "message/rfc822" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
@@ -56,10 +62,9 @@ export function MailActions({
       <button className="btn ghost sm" type="button" onClick={() => setShow(true)}>Preview</button>
       {show ? <pre className="muted">{draft.preview}</pre> : null}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <a className="btn gold" href={ready && show ? draft.outlook : undefined} target="_blank" rel="noreferrer" onClick={(event) => { if (!ready || !show) event.preventDefault(); else note() }}>Open in Outlook</a>
-        <a className="btn ghost" href={ready && show ? draft.mailto : undefined} onClick={(event) => { if (!ready || !show) event.preventDefault(); else note() }}>Open in mail</a>
-        <button className="btn ghost" type="button" disabled={!ready} onClick={() => {
-          void navigator.clipboard.writeText(draft.preview).then(() => toast(draft.truncated ? "Full text copied." : "Draft copied."), () => toast("Could not copy the draft."))
+        <button className="btn gold" type="button" onClick={openOutlook}>Open in Outlook</button>
+        <button className="btn ghost" type="button" onClick={() => {
+          void copyText(draft.preview).then(() => toast(draft.truncated ? "Full text copied." : "Draft copied."), () => toast("Could not copy the draft."))
           note()
         }}>Copy</button>
         <button className="btn ghost" type="button" disabled={!ready || !show} onClick={eml}>Download .eml</button>

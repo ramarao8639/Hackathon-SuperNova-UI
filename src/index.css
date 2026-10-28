@@ -435,7 +435,7 @@ th { font-family: inherit; font-size: 13px; letter-spacing: 0; text-transform: n
 .genie-panel .bubble.user { margin-left: 48px; }
 .genie-panel .row { flex-wrap: wrap; }
 .genie-panel .btn.sm, .genie-panel .chip, .genie-panel .source-chip, .genie-panel .follow-chip { font-size: 14px; padding: 8px 12px; }
-.genie-panel form { display: flex; padding: 14px 16px 16px; gap: 10px; }
+.genie-panel form { display: flex; flex-wrap: wrap; padding: 14px 16px 16px; gap: 10px; }
 .genie-panel form .text-input { min-height: 46px; font-size: 16px; }
 .bubble { border-radius: 16px; padding: 12px 14px; white-space: pre-wrap; }
 .bubble.user { background: var(--brand); color: var(--on-brand); margin-left: 40px; }

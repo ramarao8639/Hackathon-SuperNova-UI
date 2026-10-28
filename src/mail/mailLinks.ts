@@ -33,3 +33,25 @@ export function composeMail(draft: MailDraft) {
   const outlook = `https://outlook.office.com/mail/deeplink/compose?to=${encodedTo}&cc=${encodedCc}&subject=${encodedSubject}&body=${encodedBody}`
   return { mailto, outlook, truncated, preview: text }
 }
+
+export const DEFAULT_MAIL = "rgunji@rxbenefits.com"
+
+export async function copyText(value: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+  const area = document.createElement("textarea")
+  area.value = value
+  area.setAttribute("readonly", "")
+  area.style.position = "fixed"
+  area.style.top = "0"
+  area.style.left = "0"
+  area.style.opacity = "0"
+  document.body.appendChild(area)
+  area.focus()
+  area.select()
+  const copied = document.execCommand("copy")
+  area.remove()
+  if (!copied) throw new Error("copy")
+}
