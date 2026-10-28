@@ -165,9 +165,17 @@ export function CareerPath({ compact = false }: { compact?: boolean }) {
 }
 
 export function CareerPage() {
+  const coach = useQuery({
+    queryKey: ["career-coach"],
+    queryFn: () => api<{ current: string; next: string | null; text: string; href: string }>("/career/me/coach"),
+  })
   return (
     <section>
       <h1>Career journey</h1>
+      <section className="card" aria-label="Career coach">
+        <h2>Coach</h2>
+        {coach.data ? <p><Link to={coach.data.href}>{coach.data.text}</Link></p> : null}
+      </section>
       <CareerPath />
     </section>
   )
