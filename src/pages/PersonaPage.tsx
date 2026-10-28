@@ -96,6 +96,11 @@ export function PersonaPage() {
     enabled: Boolean(user),
     queryFn: () => api<{ items: { kind: string; text: string }[] }>("/me/nudges"),
   })
+  const brief = useQuery({
+    queryKey: ["brief", user?.id],
+    enabled: Boolean(user),
+    queryFn: () => api<{ date: string; items: { kind: string; text: string; href: string }[] }>("/me/brief"),
+  })
   const [expanded, setExpanded] = useState(false)
   const [showPay, setShowPay] = useState(false)
   const feed = useCard<{ items: FeedItem[]; as_of?: string; notice?: string }>("feed")
@@ -193,6 +198,17 @@ export function PersonaPage() {
           <input aria-label="Ask Genie" placeholder="Ask about leave, courses, documents or policies" value={text} onChange={(event) => setText(event.target.value)} />
           <button className="btn sm" type="submit"><Icon name="spark" size={16} /> Ask Genie</button>
         </form>
+      </section>
+
+      <section className="card" aria-label="Today">
+        <h3>Today</h3>
+        {brief.isPending ? <div className="skeleton-card" /> : null}
+        {(brief.data?.items ?? []).map((item) => (
+          <p key={`${item.kind}-${item.text}`}>
+            <Link to={item.href}>{item.text}</Link>
+          </p>
+        ))}
+        {brief.data && brief.data.items.length === 0 ? <p className="muted">Nothing is due today.</p> : null}
       </section>
 
       <section className="card" aria-label="Nudges">
