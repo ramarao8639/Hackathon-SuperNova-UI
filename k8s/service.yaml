@@ -1,19 +1,17 @@
 # AI-Generated: UI service
 # Generated-Date: 2026-10-28
-# Description: Public HTTP address for the web app. The app proxies /api to the private API.
+# Description: Publishes the web app on the node. This account cannot create a load balancer. The app proxies /api to the private API.
 
 apiVersion: v1
 kind: Service
 metadata:
   name: supernova-ui
   namespace: supernova
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-    service.beta.kubernetes.io/aws-load-balancer-type: nlb
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: supernova-ui
   ports:
     - port: 80
       targetPort: 80
+      nodePort: 31728

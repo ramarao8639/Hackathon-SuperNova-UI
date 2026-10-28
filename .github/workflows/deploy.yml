@@ -54,16 +54,4 @@ jobs:
             kubectl -n supernova logs -l app=supernova-ui --tail=40 --prefix=true
             exit 1
           }
-          hostname=""
-          for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            hostname=$(kubectl -n supernova get svc supernova-ui -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-            if [ -n "$hostname" ]; then
-              break
-            fi
-            sleep 10
-          done
-          if [ -n "$hostname" ]; then
-            echo "UI address http://$hostname"
-          else
-            echo "UI service is applied. The public address is still pending."
-          fi
+          echo "UI node port 31728. Open http://<node-public-ip>:31728"

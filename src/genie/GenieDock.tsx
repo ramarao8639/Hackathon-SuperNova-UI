@@ -12,6 +12,18 @@ import { MailActions } from "../mail/MailActions"
 
 type PendingDoc = { title: string; version_id: string; due_on: string | null; mandatory: boolean }
 
+// AI-Generated: Message id for pages that are not a secure browser context
+// Generated-Date: 2026-10-28
+function newId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("")
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 export type ChatMessage = {
   id: string
   role: "user" | "genie"
@@ -119,8 +131,8 @@ export function GenieProvider({ children }: { children: ReactNode }) {
   async function ask(raw: string) {
     const text = raw.trim()
     if (!text || busy) return
-    const userId = crypto.randomUUID()
-    const genieId = crypto.randomUUID()
+    const userId = newId()
+    const genieId = newId()
     setOpen(true)
     setBusy(true)
     setMessages((current) => [
@@ -135,7 +147,13 @@ export function GenieProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/genie/chat", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": readCsrf() },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": readCsrf(),
+          ...(sessionStorage.getItem("supernova_access")
+            ? { Authorization: `Bearer ${sessionStorage.getItem("supernova_access")}` }
+            : {}),
+        },
         body: JSON.stringify({ message: text, conversation_id: conversationId.current || null }),
       })
       if (!response.ok || !response.body) throw new Error("Genie could not answer")
@@ -197,7 +215,7 @@ export function GenieProvider({ children }: { children: ReactNode }) {
     conversationId.current = ""
     setMessages((current) => [
       ...current.map((message) => ({ ...message, satisfaction: false })),
-      { ...emptyGenie(crypto.randomUUID()), role: "genie", text: result.reply, pending: false },
+      { ...emptyGenie(newId()), role: "genie", text: result.reply, pending: false },
     ])
   }
 
@@ -207,7 +225,7 @@ export function GenieProvider({ children }: { children: ReactNode }) {
     setMessages((current) => [
       ...current,
       {
-        ...emptyGenie(crypto.randomUUID()),
+        ...emptyGenie(newId()),
         role: "genie",
         text: `${title}\n${lines.map((line) => `• ${line}`).join("\n")}\nThe full policy is the source.`,
         pending: false,
