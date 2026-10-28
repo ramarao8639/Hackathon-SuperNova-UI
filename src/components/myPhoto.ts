@@ -11,7 +11,7 @@ async function loadPhoto(): Promise<string | null> {
   const token = sessionStorage.getItem(TOKEN_KEY) ?? ""
   if (token) headers.set("Authorization", `Bearer ${token}`)
   const response = await fetch("/api/me/photo?size=128", { headers, credentials: "include" })
-  if (!response.ok) return null
+  if (!response.ok || response.status === 204) return null
   return URL.createObjectURL(await response.blob())
 }
 
