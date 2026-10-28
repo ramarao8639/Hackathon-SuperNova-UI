@@ -520,20 +520,6 @@ export function GenieDock() {
                 {(message.showSalary || message.showWallet) && !message.revealed ? (
                   <button className="btn ghost sm" type="button" onClick={() => reveal(message.id, message.showWallet ? "wallet" : "salary")}>Show amount</button>
                 ) : null}
-                {message.satisfaction ? (
-                  <div className="row" style={{ marginTop: 8 }}>
-                    <button className="btn sm" type="button" onClick={() => void respond(true)}>Yes</button>
-                    <button className="btn ghost sm" type="button" onClick={() => void respond(false)}>No</button>
-                  </div>
-                ) : null}
-                {message.askRating ? (
-                  <div className="row" style={{ marginTop: 8 }}>
-                    <span>Rate Genie from 1 to 5</span>
-                    {[1, 2, 3, 4, 5].map((score) => (
-                      <button key={score} className="btn ghost sm" type="button" onClick={() => void rate(score)}>{score}</button>
-                    ))}
-                  </div>
-                ) : null}
                 {message.citations.length ? (
                   <div className="chips">
                     {message.citations.map((citation) => (
@@ -549,12 +535,6 @@ export function GenieDock() {
                   </div>
                 ) : null}
                 {message.draft ? <DraftCard draft={message.draft} /> : null}
-                {message.role === "genie" && !message.pending ? (
-                  <div className="row" style={{ marginTop: 8 }}>
-                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(true, message)}>Helpful</button>
-                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(false, message)}>Not helpful</button>
-                  </div>
-                ) : null}
                 {message.freshness ? <div className="mono" style={{ marginTop: 8 }}>{message.freshness}</div> : null}
                 {message.followUps.length ? (
                   <div className="chips">
@@ -563,6 +543,32 @@ export function GenieDock() {
                         {prompt}
                       </button>
                     ))}
+                  </div>
+                ) : null}
+                {message.satisfaction ? (
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <button className="btn sm" type="button" onClick={() => void respond(true)}>Yes</button>
+                    <button className="btn ghost sm" type="button" onClick={() => void respond(false)}>No</button>
+                  </div>
+                ) : null}
+                {message.askRating ? (
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <span>Rate Genie from 1 to 5</span>
+                    {[1, 2, 3, 4, 5].map((score) => (
+                      <button key={score} className="btn ghost sm" type="button" onClick={() => void rate(score)}>{score}</button>
+                    ))}
+                  </div>
+                ) : null}
+                {message.role === "genie" && !message.pending && !message.satisfaction && !message.askRating && !message.text.startsWith("Thank you") && !message.text.startsWith("Are you satisfied") ? (
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(true, message)}>Helpful</button>
+                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(false, message)}>Not helpful</button>
+                  </div>
+                ) : null}
+                {message.role === "genie" && !message.pending && !message.satisfaction && !message.askRating && message.followUps.length > 0 ? (
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(true, message)}>Helpful</button>
+                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(false, message)}>Not helpful</button>
                   </div>
                 ) : null}
               </article>
