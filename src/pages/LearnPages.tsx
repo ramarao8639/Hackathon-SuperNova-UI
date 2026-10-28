@@ -248,6 +248,31 @@ function Icon({ name }: { name: "award" | "clock" | "list" | "cal" }) {
   )
 }
 
+function CompletionReport() {
+  const { user } = useAuth()
+  const allowed = user?.role === "hr_admin" || user?.role === "learning_admin"
+  const report = useQuery({
+    queryKey: ["learning-completion"],
+    enabled: allowed,
+    queryFn: () => api<{ programmes: { title: string; assigned: number; completed: number; overdue: number; hours: number }[]; departments: { department: string; assigned: number; completed: number }[] }>("/learning/admin/completion"),
+  })
+  if (!allowed || !report.data) return null
+  return (
+    <section className="cs">
+      <h3>Completion by programme</h3>
+      <div className="in">
+        <p><a href="/api/learning/admin/completion.csv">Download CSV</a></p>
+        {report.data.programmes.map((row) => (
+          <p key={row.title}>{row.title} · {row.completed} of {row.assigned} completed · {row.overdue} overdue · {row.hours} hours</p>
+        ))}
+        {report.data.departments.map((row) => (
+          <p className="tiny muted" key={row.department}>{row.department}: {row.completed} of {row.assigned}</p>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export function LearningPage() {
   const learning = useHub()
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("all")
@@ -278,6 +303,7 @@ export function LearningPage() {
           </div>
         ) : null}
       </div>
+      <CompletionReport />
       <Buddy />
       <VideoSave />
       <Badges />
