@@ -12,6 +12,17 @@ type Portal = { id: string; name: string; landing_path: string; roles: string[] 
 type AuditRow = { at: string; who: string; action: string; target: string }
 type Health = { name: string; status: string }
 
+function DispatchEvents() {
+  const send = useMutation({
+    mutationFn: () => api<{ delivered: number; signed: boolean }>("/admin/outbox/dispatch", { method: "POST" }),
+  })
+  return (
+    <button className="btn ghost sm" type="button" style={{ marginLeft: 12 }} onClick={() => send.mutate()}>
+      {send.data ? `${send.data.delivered} sent` : "Send signed events"}
+    </button>
+  )
+}
+
 export function HrHomePage() {
   const people = useQuery({ queryKey: ["employees"], queryFn: () => api<{ items: { name: string }[] }>("/hris/employees") })
   const pending = useQuery({ queryKey: ["approvals"], queryFn: () => api<{ items: unknown[] }>("/time/approvals/pending") })
@@ -56,6 +67,11 @@ export function SysAdminPage() {
           </article>
         ))}
       </div>
+      <h2>Signed events</h2>
+      <p className="card">
+        Pending outbox events are signed and sent once.
+        <DispatchEvents />
+      </p>
       <h2>Mock adapters</h2>
       {(adapters.data?.items ?? []).map((item) => (
         <p className="card" key={item.name}>
