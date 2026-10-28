@@ -4,6 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
+import { useSearchParams } from "react-router"
 import { api, ApiError } from "../api/client"
 import { Avatar } from "../components/Avatar"
 import { useToast } from "../components/toast"
@@ -78,10 +79,11 @@ export function DashboardPage() {
 export function ApplyLeavePage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
   const types = useQuery({ queryKey: ["leave-types"], queryFn: () => api<{ items: LeaveType[] }>("/time/leavetypes") })
   const [chosen, setChosen] = useState("")
-  const [start, setStart] = useState("")
-  const [end, setEnd] = useState("")
+  const [start, setStart] = useState(() => searchParams.get("start") ?? "")
+  const [end, setEnd] = useState(() => searchParams.get("end") ?? "")
   const [half, setHalf] = useState(false)
   const [reason, setReason] = useState("")
   const typeCode = chosen || types.data?.items[0]?.code || "CL"

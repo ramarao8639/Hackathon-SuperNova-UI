@@ -216,10 +216,21 @@ export function Shell() {
           </button>
           {pop === "bell" ? (
             <div className="pop">
-              <h4>Notifications</h4>
-              {(notices.data?.items ?? []).slice(0, 5).map((item) => <p key={item.id}>{item.title}</p>)}
+              <h4>Notifications {notices.data && notices.data.unread > 0 ? <span className="badge">{notices.data.unread}</span> : null}</h4>
+              {(notices.data?.items ?? []).slice(0, 5).map((item) => (
+                <p key={item.id} style={{ cursor: "pointer" }} onClick={() => {
+                  void api(`/notifications/${item.id}/read`, { method: "POST" }).then(() => {
+                    void notices.refetch()
+                  })
+                }}>{item.title}</p>
+              ))}
               {(notices.data?.items.length ?? 0) === 0 ? <div className="empty small">Nothing new.</div> : null}
-              <Link to="/hrms/notifications">Open the center</Link>
+              {notices.data && notices.data.unread > 0 ? (
+                <button className="btn ghost sm" type="button" style={{ marginTop: 8 }} onClick={() => {
+                  void api("/notifications/read-all", { method: "POST" }).then(() => void notices.refetch())
+                }}>Mark all read</button>
+              ) : null}
+              <Link to="/hrms/notifications" onClick={() => setPop(null)}>Open the center</Link>
             </div>
           ) : null}
         </div>
