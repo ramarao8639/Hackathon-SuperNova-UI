@@ -35,6 +35,7 @@ export type ChatMessage = {
   freshness: string
   pending: boolean
   satisfaction: boolean
+  askRating: boolean
   showSalary: boolean
   showWallet: boolean
   revealed: string
@@ -49,12 +50,22 @@ type GenieValue = {
   ask: (text: string) => void
   showSummary: (title: string, text: string) => void
   respond: (satisfied: boolean) => void
+  rate: (score: number) => void
   reveal: (messageId: string, kind?: "salary" | "wallet") => void
 }
 
 const GenieContext = createContext<GenieValue | null>(null)
 
 type Point = { x: number; y: number }
+
+function panelOnScreen(point: Point | null): Point | null {
+  if (!point || typeof window === "undefined") return point
+  const width = Math.min(760, window.innerWidth - 28)
+  if (point.x < 8 || point.y < 8) return null
+  if (point.x + width > window.innerWidth - 8) return null
+  if (point.y > window.innerHeight - 240) return null
+  return point
+}
 
 function readPoint(key: string): Point | null {
   try {
@@ -84,6 +95,7 @@ function emptyGenie(id: string): ChatMessage {
     freshness: "",
     pending: true,
     satisfaction: false,
+    askRating: false,
     showSalary: false,
     showWallet: false,
     revealed: "",
@@ -212,10 +224,25 @@ export function GenieProvider({ children }: { children: ReactNode }) {
       method: "POST",
       body: JSON.stringify({ satisfied }),
     })
+    if (satisfied) {
+      setMessages((current) => current.map((message) => ({ ...message, satisfaction: false, askRating: message.satisfaction })))
+      return
+    }
     conversationId.current = ""
     setMessages((current) => [
-      ...current.map((message) => ({ ...message, satisfaction: false })),
+      ...current.map((message) => ({ ...message, satisfaction: false, askRating: false })),
       { ...emptyGenie(newId()), role: "genie", text: result.reply, pending: false },
+    ])
+  }
+
+  async function rate(score: number) {
+    const id = conversationId.current
+    if (!id) return
+    await api(`/genie/conversations/${id}/rating`, { method: "POST", body: JSON.stringify({ score }) })
+    conversationId.current = ""
+    setMessages((current) => [
+      ...current.map((message) => ({ ...message, askRating: false })),
+      { ...emptyGenie(newId()), role: "genie", text: "Thank you. Your rating was sent to HR.", pending: false },
     ])
   }
 
@@ -245,7 +272,7 @@ export function GenieProvider({ children }: { children: ReactNode }) {
     }).catch(() => toast("Salary could not be shown."))
   }
 
-  return <GenieContext.Provider value={{ open, setOpen, messages, busy, ask, respond, reveal, showSummary }}>{children}</GenieContext.Provider>
+  return <GenieContext.Provider value={{ open, setOpen, messages, busy, ask, respond, rate, reveal, showSummary }}>{children}</GenieContext.Provider>
 }
 
 export function useGenie(): GenieValue {
@@ -255,7 +282,7 @@ export function useGenie(): GenieValue {
 }
 
 export function GenieDock() {
-  const { open, setOpen, messages, busy, ask, respond, reveal } = useGenie()
+  const { open, setOpen, messages, busy, ask, respond, rate, reveal } = useGenie()
   const { user } = useAuth()
   const location = useLocation()
   const viewer = location.pathname.includes("/view")
@@ -263,7 +290,7 @@ export function GenieDock() {
   const [hello, setHello] = useState(() => localStorage.getItem("genie-hello") !== "1")
   const first = user?.name.split(" ")[0] ?? "there"
   const [fabPos, setFabPos] = useState<Point | null>(() => readPoint("genie-fab"))
-  const [panelPos, setPanelPos] = useState<Point | null>(() => readPoint("genie-panel"))
+  const [panelPos, setPanelPos] = useState<Point | null>(() => panelOnScreen(readPoint("genie-panel")))
   const drag = useRef<{ kind: "fab" | "panel"; dx: number; dy: number; moved: boolean; point: Point | null } | null>(null)
   const skipClick = useRef(false)
 
@@ -393,6 +420,14 @@ export function GenieDock() {
                     <button className="btn ghost sm" type="button" onClick={() => void respond(false)}>No</button>
                   </div>
                 ) : null}
+                {message.askRating ? (
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <span>Rate Genie</span>
+                    {[1, 2, 3, 4, 5].map((score) => (
+                      <button key={score} className="btn ghost sm" type="button" onClick={() => void rate(score)}>{score}</button>
+                    ))}
+                  </div>
+                ) : null}
                 {message.citations.length ? (
                   <div className="chips">
                     {message.citations.map((citation) => (
@@ -410,8 +445,8 @@ export function GenieDock() {
                 {message.draft ? <DraftCard draft={message.draft} /> : null}
                 {message.role === "genie" && !message.pending ? (
                   <div className="row" style={{ marginTop: 8 }}>
-                    <button className="btn ghost sm" type="button" onClick={() => void api("/genie/feedback", { method: "POST", body: JSON.stringify({ helpful: true, reason: "", include_question: false, question: "" }) })}>Helpful</button>
-                    <button className="btn ghost sm" type="button" onClick={() => void api("/genie/feedback", { method: "POST", body: JSON.stringify({ helpful: false, reason: "Not helpful", include_question: false, question: "" }) })}>Not helpful</button>
+                    <button className="btn ghost sm" type="button" onClick={() => void api("/genie/feedback", { method: "POST", body: JSON.stringify({ helpful: true, reason: "Helpful", include_question: false, question: [...messages].reverse().find((item) => item.role === "user")?.text ?? "" }) })}>Helpful</button>
+                    <button className="btn ghost sm" type="button" onClick={() => void api("/genie/feedback", { method: "POST", body: JSON.stringify({ helpful: false, reason: "Not helpful", include_question: false, question: [...messages].reverse().find((item) => item.role === "user")?.text ?? "" }) })}>Not helpful</button>
                   </div>
                 ) : null}
                 {message.freshness ? <div className="mono" style={{ marginTop: 8 }}>{message.freshness}</div> : null}
@@ -428,7 +463,7 @@ export function GenieDock() {
             ))}
           </div>
           <form
-            style={{ display: "flex", gap: 8, padding: 12 }}
+            style={{ display: "flex" }}
             onSubmit={(event) => {
               event.preventDefault()
               ask(text)
