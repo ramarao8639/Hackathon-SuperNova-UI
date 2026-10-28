@@ -4,6 +4,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { useLocation, useNavigate } from "react-router"
+import { Link } from "react-router"
 import { api, readCsrf } from "../api/client"
 import type { Citation, Draft } from "../api/types"
 import { useAuth } from "../auth/AuthProvider"
@@ -49,6 +50,7 @@ export type ChatMessage = {
   showWallet: boolean
   revealed: string
   steps: string[]
+  actionLink: { label: string; href: string } | null
 }
 
 type GenieValue = {
@@ -109,6 +111,7 @@ function emptyGenie(id: string): ChatMessage {
     showWallet: false,
     revealed: "",
     steps: [],
+    actionLink: null,
   }
 }
 
@@ -222,6 +225,7 @@ export function GenieProvider({ children }: { children: ReactNode }) {
               satisfaction: Boolean(data.satisfaction),
               showSalary: Boolean(data.show_salary),
               showWallet: Boolean(data.show_wallet),
+              actionLink: (data.action_link as { label: string; href: string } | null) ?? null,
             }))
           }
         }
@@ -535,6 +539,17 @@ export function GenieDock() {
                   </div>
                 ) : null}
                 {message.draft ? <DraftCard draft={message.draft} /> : null}
+                {message.actionLink && !message.pending ? (
+                  <div style={{ marginTop: 10 }}>
+                    <Link
+                      className="btn gold sm"
+                      to={message.actionLink.href}
+                      onClick={() => setOpen(false)}
+                    >
+                      {message.actionLink.label} →
+                    </Link>
+                  </div>
+                ) : null}
                 {message.freshness ? <div className="mono" style={{ marginTop: 8 }}>{message.freshness}</div> : null}
                 {message.followUps.length ? (
                   <div className="chips">
