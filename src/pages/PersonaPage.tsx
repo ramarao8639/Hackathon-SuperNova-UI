@@ -72,11 +72,16 @@ export function PersonaPage() {
     }
     source.addEventListener("pay", onPay)
     source.addEventListener("performance", onPerformance)
+    const onFeed = () => {
+      void queryClient.invalidateQueries({ queryKey: ["persona", "feed"] })
+    }
+    source.addEventListener("feed", onFeed)
     return () => {
       source.removeEventListener("leave", onLeave)
       source.removeEventListener("learning", onLearning)
       source.removeEventListener("pay", onPay)
       source.removeEventListener("performance", onPerformance)
+      source.removeEventListener("feed", onFeed)
       source.close()
     }
   }, [queryClient, user])
@@ -93,7 +98,7 @@ export function PersonaPage() {
   })
   const [expanded, setExpanded] = useState(false)
   const [showPay, setShowPay] = useState(false)
-  const feed = useCard<{ items: FeedItem[]; as_of?: string }>("feed")
+  const feed = useCard<{ items: FeedItem[]; as_of?: string; notice?: string }>("feed")
   const journey = useCard<{
     stages: { id: string; label: string; detail: string }[]
     current_index: number
@@ -145,7 +150,15 @@ export function PersonaPage() {
         due: duePhrase(item.due_on),
         kind: left == null ? "" : left < 0 ? "bad" : left <= 4 ? "warn" : "",
         button: "Open",
-        href: item.id === "self-assessment" ? "/hrms/performance" : item.id === "tableau" || /course|learning|certif/i.test(item.title) ? "/lms/learning" : "/genie/docs",
+        href: item.id.startsWith("leave-")
+          ? "/hrms/requests"
+          : item.id.startsWith("course-")
+            ? "/lms/learning"
+            : item.id === "self-assessment"
+              ? "/hrms/performance"
+              : item.id === "tableau" || /course|learning|certif/i.test(item.title)
+                ? "/lms/learning"
+                : "/genie/docs",
       }
     }),
   ]
@@ -191,6 +204,7 @@ export function PersonaPage() {
 
       <section id="where-you-stand" className="card">
         <h3>Where you stand</h3>
+        {feed.data?.notice ? <div className="source-chip">{feed.data.notice}</div> : null}
         {feed.isError && documents.isError ? (
           <div className="error-card">This list could not be loaded. <button className="btn ghost sm" type="button" onClick={() => { void feed.refetch(); void documents.refetch() }}>Retry</button></div>
         ) : (
