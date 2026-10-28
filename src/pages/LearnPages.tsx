@@ -23,6 +23,8 @@ type Registration = {
   action: string
   pending: boolean
   completed_on?: string | null
+  hours?: number | null
+  certificate_code?: string | null
   employee?: string
 }
 
@@ -42,13 +44,14 @@ type CatalogCourse = {
   level: string
   rating_avg: number | null
   rating_count: number
+  reviews?: { stars: number; comment: string }[]
 }
 
 type Hub = {
   welcome: string
   completed_hours: number
   target_hours: number
-  action_items: { label: string; due_label: string; course_id?: string; part?: number }[]
+  action_items: { label: string; due_label: string; course_id?: string; part?: number; quiz?: boolean; review?: boolean }[]
   tasks: { title: string; detail: string; action: string }[]
   registrations: Registration[]
   sessions: Session[]
@@ -165,6 +168,48 @@ function Buddy() {
   )
 }
 
+function ReviewForm({ courseId }: { courseId: string }) {
+  const queryClient = useQueryClient()
+  const [stars, setStars] = useState("5")
+  const [comment, setComment] = useState("")
+  const submit = useMutation({
+    mutationFn: () => api(`/learning/courses/${courseId}/review`, { method: "POST", body: JSON.stringify({ stars: Number(stars), comment }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["learning"] }),
+  })
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        submit.mutate()
+      }}
+    >
+      <input aria-label="Stars" type="number" min={1} max={5} value={stars} onChange={(event) => setStars(event.target.value)} />
+      <input aria-label="Review" value={comment} maxLength={240} onChange={(event) => setComment(event.target.value)} />
+      <button className="btn ghost sm" type="submit">Submit review</button>
+    </form>
+  )
+}
+
+function QuizScore({ courseId }: { courseId: string }) {
+  const queryClient = useQueryClient()
+  const [score, setScore] = useState("67")
+  const submit = useMutation({
+    mutationFn: () => api(`/learning/courses/${courseId}/quiz`, { method: "POST", body: JSON.stringify({ score: Number(score) }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["learning"] }),
+  })
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        submit.mutate()
+      }}
+    >
+      <input aria-label="Quiz score" type="number" min={0} max={100} value={score} onChange={(event) => setScore(event.target.value)} />
+      <button className="btn ghost sm" type="submit">Submit quiz</button>
+    </form>
+  )
+}
+
 function AckButton({ courseId, part }: { courseId: string; part: number }) {
   const queryClient = useQueryClient()
   const ack = useMutation({
@@ -264,7 +309,9 @@ export function LearningPage() {
                         <tr key={item.label}>
                           <td>
                             <span className="lnk">{item.label}</span>
-                            {item.course_id !== undefined && item.part !== undefined ? (
+                            {item.review && item.course_id ? <ReviewForm courseId={item.course_id} /> : null}
+                            {item.quiz && item.course_id ? <QuizScore courseId={item.course_id} /> : null}
+                            {!item.quiz && item.course_id !== undefined && item.part !== undefined ? (
                               <> <AckButton courseId={item.course_id} part={item.part} /></>
                             ) : null}
                           </td>
@@ -394,6 +441,9 @@ export function CatalogPage() {
                 <p className="small">
                   {course.rating_count ? `${course.rating_avg} from ${course.rating_count} review${course.rating_count === 1 ? "" : "s"}` : "No ratings yet"}
                 </p>
+                {(course.reviews ?? []).map((review) => (
+                  <p className="small" key={`${review.stars}-${review.comment}`}>{review.stars} stars. {review.comment}</p>
+                ))}
               </div>
             </article>
           ))}
@@ -472,7 +522,11 @@ export function TranscriptPage() {
       <div className="pagehead">
         <div>
           <h1>Transcript</h1>
-          <p className="muted">Everything you have completed, with the date it was finished.</p>
+          <p className="muted">Everything you have completed, with the date, hours, and certificate.</p>
+        </div>
+        <div className="row">
+          <a className="btn ghost sm" href="/api/learning/me/transcript.csv">Download CSV</a>
+          <a className="btn ghost sm" href="/api/learning/me/transcript.pdf">Download PDF</a>
         </div>
       </div>
       <section className="cs">
@@ -484,18 +538,20 @@ export function TranscriptPage() {
               <thead>
                 <tr>
                   <th>Programme</th>
-                  <th>Assigned by</th>
+                  <th>Source</th>
                   <th>Completed</th>
-                  <th>Status</th>
+                  <th>Hours</th>
+                  <th>Certificate</th>
                 </tr>
               </thead>
               <tbody>
                 {done.map((row) => (
                   <tr key={row.id}>
                     <td><strong>{row.title}</strong></td>
-                    <td>{row.assigned_by}</td>
+                    <td>Learning Hub</td>
                     <td>{row.completed_on ? formatDate(row.completed_on) : "Completed"}</td>
-                    <td><span className="hub-chip completed">Completed</span></td>
+                    <td>{row.hours ?? ""}</td>
+                    <td>{row.certificate_code ?? ""}</td>
                   </tr>
                 ))}
                 {external.map((row) => (
@@ -503,7 +559,8 @@ export function TranscriptPage() {
                     <td><strong>{row.title}</strong></td>
                     <td>{row.source}</td>
                     <td>{row.completed_on ? formatDate(row.completed_on) : "Completed"}</td>
-                    <td><span className="hub-chip completed">{row.certificate_code}</span></td>
+                    <td></td>
+                    <td>{row.certificate_code}</td>
                   </tr>
                 ))}
               </tbody>
