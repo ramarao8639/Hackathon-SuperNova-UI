@@ -70,6 +70,20 @@ function useHub() {
   return useQuery({ queryKey: ["learning"], queryFn: () => api<Hub>("/learning/mine") })
 }
 
+function Buddy() {
+  const buddy = useQuery({
+    queryKey: ["learning-buddy"],
+    queryFn: () => api<{ title: string; step: string; href: string }>("/learning/me/buddy"),
+  })
+  if (!buddy.data) return null
+  return (
+    <section className="card" aria-label="Learning buddy">
+      <h2>Buddy</h2>
+      <p><Link to={buddy.data.href}>{buddy.data.step}</Link></p>
+    </section>
+  )
+}
+
 function dueText(label: string, iso: string | null) {
   if (label === "None" || !iso) return "None"
   return formatDate(iso)
@@ -125,6 +139,7 @@ export function LearningPage() {
           </div>
         ) : null}
       </div>
+      <Buddy />
       {learning.isPending ? <p className="muted">Loading your programmes.</p> : null}
       {learning.isError ? <p className="note bad">Learning Hub could not load your programmes. Refresh and try again.</p> : null}
       {data ? (
