@@ -85,6 +85,10 @@ export function ApplyLeavePage() {
   const [half, setHalf] = useState(false)
   const [reason, setReason] = useState("")
   const typeCode = chosen || types.data?.items[0]?.code || "CL"
+  const plan = useQuery({
+    queryKey: ["leave-plan", typeCode],
+    queryFn: () => api<{ options: { start_on: string; end_on: string; working_days: number }[] }>(`/time/plan?type_code=${encodeURIComponent(typeCode)}&days=1`),
+  })
   const preview = useQuery({
     queryKey: ["leave-preview", typeCode, start, end, half],
     enabled: Boolean(start && end),
@@ -110,6 +114,26 @@ export function ApplyLeavePage() {
     <section className="page">
       <p className="mono">PeopleDesk</p>
       <h1 className="h1">Apply leave</h1>
+      <div className="card">
+        <h2>Suggested dates</h2>
+        <div className="chips">
+          {(plan.data?.options ?? []).map((option) => (
+            <button
+              className="btn ghost sm"
+              type="button"
+              key={`${option.start_on}-${option.end_on}`}
+              onClick={() => {
+                setStart(option.start_on)
+                setEnd(option.end_on)
+                setHalf(false)
+              }}
+            >
+              {formatDate(option.start_on)}
+            </button>
+          ))}
+          {plan.data && plan.data.options.length === 0 ? <p className="muted">No open dates in the next few weeks.</p> : null}
+        </div>
+      </div>
       <form className="card stack" onSubmit={(event) => { event.preventDefault(); submit.mutate() }}>
         <label>Type
           <select value={typeCode} onChange={(event) => setChosen(event.target.value)}>
