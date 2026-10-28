@@ -120,16 +120,25 @@ export function GenieProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast()
 
   function setOpen(next: boolean) {
-    if (!next && conversationId.current) {
-      const id = conversationId.current
-      void api<{ ask?: boolean }>(`/genie/conversations/${id}/end`, { method: "POST", body: JSON.stringify({ reason: "close" }) }).then((result) => {
-        if (!result.ask) return
-        setMessages((current) => current.map((message, index) => (
-          index === current.length - 1 && message.role === "genie" ? { ...message, satisfaction: true } : message
-        )))
-      }).catch(() => undefined)
+    if (next) {
+      setOpenState(true)
+      return
     }
-    setOpenState(next)
+    const id = conversationId.current
+    if (!id) {
+      setOpenState(false)
+      return
+    }
+    void api<{ ask?: boolean }>(`/genie/conversations/${id}/end`, { method: "POST", body: JSON.stringify({ reason: "close" }) }).then((result) => {
+      if (!result.ask) {
+        setOpenState(false)
+        return
+      }
+      setOpenState(true)
+      setMessages((current) => current.map((message, index) => (
+        index === current.length - 1 && message.role === "genie" ? { ...message, askRating: true } : message
+      )))
+    }).catch(() => setOpenState(false))
   }
 
   useEffect(() => {
@@ -247,12 +256,13 @@ export function GenieProvider({ children }: { children: ReactNode }) {
   async function rate(score: number) {
     const id = conversationId.current
     if (!id) return
-    await api(`/genie/conversations/${id}/rating`, { method: "POST", body: JSON.stringify({ score }) })
+    const result = await api<{ mailed: boolean }>(`/genie/conversations/${id}/rating`, { method: "POST", body: JSON.stringify({ score }) })
     conversationId.current = ""
     setMessages((current) => [
-      ...current.map((message) => ({ ...message, askRating: false })),
-      { ...emptyGenie(newId()), role: "genie", text: "Thank you. Your rating was sent to HR.", pending: false },
+      ...current.map((message) => ({ ...message, askRating: false, satisfaction: false })),
+      { ...emptyGenie(newId()), role: "genie", text: result.mailed ? "Thank you. HR has this rating so the answer can be clearer." : "Thank you for rating Genie.", pending: false },
     ])
+    setOpenState(false)
   }
 
   function showSummary(title: string, text: string) {
@@ -503,7 +513,7 @@ export function GenieDock() {
                 ) : null}
                 {message.askRating ? (
                   <div className="row" style={{ marginTop: 8 }}>
-                    <span>Rate Genie</span>
+                    <span>Rate Genie from 1 to 5</span>
                     {[1, 2, 3, 4, 5].map((score) => (
                       <button key={score} className="btn ghost sm" type="button" onClick={() => void rate(score)}>{score}</button>
                     ))}

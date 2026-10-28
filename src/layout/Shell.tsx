@@ -225,12 +225,12 @@ export function Shell() {
           <Link to="/hrms/profile" aria-label={`${user.name} profile`} style={{ display: "flex" }}>
             <Avatar name={user.name} pct={summary.data?.performance_pct} reviewStatus={summary.data?.review_status} size={42} />
           </Link>
-          <div>
+          <div className="who-name">
             <strong>{user.name}</strong>
             <div className="tiny muted">{user.email}</div>
-            <button className="btn ghost sm" type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "Light mode" : "Dark mode"}</button>
-            <button className="btn ghost sm" type="button" onClick={() => void logout().then(() => navigate("/"))}>Sign out</button>
           </div>
+          <button className="btn ghost sm" type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "Light mode" : "Dark mode"}</button>
+          <button className="btn ghost sm" type="button" onClick={() => void logout().then(() => navigate("/"))}>Sign out</button>
         </div>
       </header>
       {finderOpen ? (

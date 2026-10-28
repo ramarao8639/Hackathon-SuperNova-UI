@@ -167,10 +167,10 @@ img { max-width: 100%; }
 .quick-pick strong { display: block; }
 .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
 
-.shell { min-height: 100vh; display: grid; grid-template-rows: 58px 1fr; }
+.shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
 .shell.viewer-mode { display: block; }
 .top {
-  grid-row: 1; height: 58px; display: flex; align-items: center; gap: 14px; padding: 0 20px;
+  grid-row: 1; min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 8px 20px;
   border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 30;
 }
 .logo { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-size: 21px; font-weight: 700; color: var(--brand-strong); margin-right: 6px; text-decoration: none; }
@@ -192,7 +192,10 @@ img { max-width: 100%; }
   position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; border-radius: 9px;
   background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 4px;
 }
-.who { display: flex; align-items: center; gap: 8px; }
+.who { display: flex; align-items: center; gap: 10px; flex: none; }
+.who-name { line-height: 1.25; min-width: 0; }
+.who-name strong, .who-name .tiny { display: block; white-space: nowrap; }
+.who .btn { white-space: nowrap; }
 .who select { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 7px 10px; max-width: 210px; }
 .pop { position: absolute; right: 0; top: 46px; width: 280px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 8px; z-index: 40; }
 .pop h4 { margin: 0; padding: 8px 10px; }
