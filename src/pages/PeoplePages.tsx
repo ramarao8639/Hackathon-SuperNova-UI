@@ -89,6 +89,10 @@ export function ApplyLeavePage() {
     queryKey: ["leave-plan", typeCode],
     queryFn: () => api<{ options: { start_on: string; end_on: string; working_days: number }[] }>(`/time/plan?type_code=${encodeURIComponent(typeCode)}&days=1`),
   })
+  const whatIf = useQuery({
+    queryKey: ["leave-what-if", typeCode],
+    queryFn: () => api<{ ok: boolean; available: number | null; available_after: number | null; start_on: string | null; message: string }>(`/time/what-if?type_code=${encodeURIComponent(typeCode)}&days=1`),
+  })
   const preview = useQuery({
     queryKey: ["leave-preview", typeCode, start, end, half],
     enabled: Boolean(start && end),
@@ -133,6 +137,9 @@ export function ApplyLeavePage() {
           ))}
           {plan.data && plan.data.options.length === 0 ? <p className="muted">No open dates in the next few weeks.</p> : null}
         </div>
+        {whatIf.data?.ok && whatIf.data.available != null ? (
+          <p>Taking one day on {formatDate(whatIf.data.start_on ?? "")} leaves {whatIf.data.available_after} of {whatIf.data.available}.</p>
+        ) : null}
       </div>
       <form className="card stack" onSubmit={(event) => { event.preventDefault(); submit.mutate() }}>
         <label>Type
