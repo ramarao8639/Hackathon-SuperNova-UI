@@ -18,6 +18,7 @@ type Milestone = {
   status: "locked" | "in_progress" | "earned"
   learned: string[]
   certificate_code: string | null
+  teams_link?: string
   percent: number
   due_on: string | null
   programme_id: string | null
@@ -138,7 +139,10 @@ export function CareerPath({ compact = false }: { compact?: boolean }) {
             <p>
               {open.certificate_code}{" "}
               <a href={`/api/career/me/certificates/${open.certificate_code}`}>Download</a>{" "}
-              <button type="button" onClick={() => navigator.clipboard.writeText(open.certificate_code ?? "")}>Share</button>
+              <button type="button" onClick={() => navigator.clipboard.writeText(open.certificate_code ?? "")}>Share</button>{" "}
+              {open.teams_link ? (
+                <a href={open.teams_link} target="_blank" rel="noreferrer">Share in Teams</a>
+              ) : null}
             </p>
           ) : null}
           {open.programme_id ? <Link to="/lms/catalog">Open the programme</Link> : null}

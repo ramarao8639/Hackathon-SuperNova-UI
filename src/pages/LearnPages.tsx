@@ -70,6 +70,27 @@ function useHub() {
   return useQuery({ queryKey: ["learning"], queryFn: () => api<Hub>("/learning/mine") })
 }
 
+function Badges() {
+  const badges = useQuery({
+    queryKey: ["learning-badges"],
+    queryFn: () => api<{ items: { id: string; name: string; earned_on: string }[] }>("/learning/me/badges"),
+  })
+  if (!badges.data) return null
+  return (
+    <section className="card" aria-label="Learning badges">
+      <h2>Badges</h2>
+      {badges.data.items.length === 0 ? <p>No badges yet.</p> : null}
+      <ul>
+        {badges.data.items.map((item) => (
+          <li key={item.id}>
+            {item.name} <span className="hub-chip completed">{formatDate(item.earned_on)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function Buddy() {
   const buddy = useQuery({
     queryKey: ["learning-buddy"],
@@ -140,6 +161,7 @@ export function LearningPage() {
         ) : null}
       </div>
       <Buddy />
+      <Badges />
       {learning.isPending ? <p className="muted">Loading your programmes.</p> : null}
       {learning.isError ? <p className="note bad">Learning Hub could not load your programmes. Refresh and try again.</p> : null}
       {data ? (
