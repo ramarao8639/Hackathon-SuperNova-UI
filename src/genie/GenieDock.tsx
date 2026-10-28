@@ -322,9 +322,8 @@ export function GenieDock() {
     return [...messages].reverse().find((item) => item.role === "genie" && item.text)?.text ?? ""
   }
 
-  function speak() {
+  function playAnswer(answer: string) {
     const speech = window.speechSynthesis
-    const answer = lastAnswer()
     if (!speech || !answer) {
       toast("There is no answer to read yet.")
       return
@@ -334,50 +333,66 @@ export function GenieDock() {
     utterance.lang = "en-IN"
     const voice = speech.getVoices().find((item) => item.lang.toLowerCase().startsWith("en"))
     if (voice) utterance.voice = voice
-    utterance.onend = () => setSpeaking(false)
-    utterance.onerror = () => setSpeaking(false)
+    utterance.onend = () => setListening(false)
+    utterance.onerror = () => setListening(false)
     spoken.current = utterance
-    setSpeaking(true)
+    setListening(true)
     window.setTimeout(() => speech.speak(utterance), 80)
   }
 
-  function stopSpeak() {
+  function stopListen() {
     window.speechSynthesis?.cancel()
     spoken.current = null
-    setSpeaking(false)
+    setListening(false)
   }
 
-  function listen() {
+  function speak() {
     const browser = window as Window & { webkitSpeechRecognition?: new () => SpeechListener; SpeechRecognition?: new () => SpeechListener }
     const Recognition = browser.SpeechRecognition ?? browser.webkitSpeechRecognition
-    if (!Recognition) {
-      toast("Listening works in Chrome or Edge.")
+    if (!window.isSecureContext || !Recognition) {
+      toast("Voice commands need Chrome or Edge on the secure local page.")
       return
     }
     const recognition = new Recognition()
     recognition.lang = "en-IN"
-    recognition.onresult = (event) => setText(event.results[0][0].transcript)
-    recognition.onend = () => setListening(false)
+    recognition.onresult = (event) => {
+      const said = event.results[0][0].transcript.trim()
+      setSpeaking(false)
+      if (!said) return
+      setText(said)
+      ask(said)
+    }
+    recognition.onend = () => setSpeaking(false)
     recognition.onerror = () => {
-      setListening(false)
-      toast("Listening stopped.")
+      setSpeaking(false)
+      toast("The microphone stopped.")
     }
     heard.current = recognition
-    setListening(true)
+    setSpeaking(true)
     recognition.start()
   }
 
-  function stopListen() {
+  function stopSpeak() {
     heard.current?.stop()
-    setListening(false)
+    setSpeaking(false)
   }
 
-  async function sendFeedback(helpful: boolean) {
-    const question = [...messages].reverse().find((item) => item.role === "user")?.text ?? ""
+  async function sendFeedback(helpful: boolean, message: ChatMessage) {
+    const index = messages.findIndex((item) => item.id === message.id)
+    const question = [...messages.slice(0, Math.max(index, 0))].reverse().find((item) => item.role === "user")?.text ?? ""
+    const draft = message.draft
     try {
       const result = await api<{ mailed_to: string }>("/genie/feedback", {
         method: "POST",
-        body: JSON.stringify({ helpful, reason: helpful ? "Helpful" : "Not helpful", include_question: false, question }),
+        body: JSON.stringify({
+          helpful,
+          reason: helpful ? "Helpful" : "Not helpful",
+          include_question: false,
+          question,
+          draft_subject: draft?.subject ?? "",
+          draft_to: draft?.to.join(", ") ?? "",
+          draft_body: draft?.body ?? "",
+        }),
       })
       toast(`${helpful ? "Helpful" : "Not helpful"} note sent to ${result.mailed_to}`)
     } catch {
@@ -536,8 +551,8 @@ export function GenieDock() {
                 {message.draft ? <DraftCard draft={message.draft} /> : null}
                 {message.role === "genie" && !message.pending ? (
                   <div className="row" style={{ marginTop: 8 }}>
-                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(true)}>Helpful</button>
-                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(false)}>Not helpful</button>
+                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(true, message)}>Helpful</button>
+                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(false, message)}>Not helpful</button>
                   </div>
                 ) : null}
                 {message.freshness ? <div className="mono" style={{ marginTop: 8 }}>{message.freshness}</div> : null}
@@ -575,10 +590,10 @@ export function GenieDock() {
                 }
               }}
             />
-            <button className="btn ghost" type="button" aria-label={speaking ? "Stop speaking" : "Speak"} onClick={speaking ? stopSpeak : speak}>
+            <button className="btn ghost" type="button" aria-label={speaking ? "Stop voice command" : "Speak"} onClick={speaking ? stopSpeak : speak}>
               {speaking ? "Stop" : "Speak"}
             </button>
-            <button className="btn ghost" type="button" aria-label={listening ? "Stop listening" : "Listen"} onClick={listening ? stopListen : listen}>
+            <button className="btn ghost" type="button" aria-label={listening ? "Stop the answer" : "Listen"} onClick={listening ? stopListen : () => playAnswer(lastAnswer())}>
               {listening ? "Stop" : "Listen"}
             </button>
             <button className="btn gold" type="submit" disabled={busy || !text.trim()}>

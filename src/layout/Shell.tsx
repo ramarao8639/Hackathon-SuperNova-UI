@@ -9,6 +9,7 @@ import { api } from "../api/client"
 import type { DocList } from "../api/types"
 import { useAuth } from "../auth/AuthProvider"
 import { Avatar } from "../components/Avatar"
+import { useMyPhoto } from "../components/myPhoto"
 import { Icon } from "../components/Icon"
 import { GenieDock } from "../genie/GenieDock"
 
@@ -32,6 +33,7 @@ type NavGroup = { title: string; items: NavItem[] }
 
 export function Shell() {
   const { user, logout } = useAuth()
+  const photoUrl = useMyPhoto()
   const navigate = useNavigate()
   const location = useLocation()
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") ?? "light")
@@ -223,7 +225,7 @@ export function Shell() {
         </div>
         <div className="who">
           <Link to="/hrms/profile" aria-label={`${user.name} profile`} style={{ display: "flex" }}>
-            <Avatar name={user.name} pct={summary.data?.performance_pct} reviewStatus={summary.data?.review_status} size={42} />
+            <Avatar name={user.name} pct={summary.data?.performance_pct} reviewStatus={summary.data?.review_status} size={42} photoUrl={photoUrl} />
           </Link>
           <div className="who-name">
             <strong>{user.name}</strong>
@@ -244,7 +246,7 @@ export function Shell() {
       <div className="shell-body">
         <aside className="rail">
           <div className="profile">
-            <Avatar name={user.name} pct={summary.data?.performance_pct} reviewStatus={summary.data?.review_status} size={54} showPct />
+            <Avatar name={user.name} pct={summary.data?.performance_pct} reviewStatus={summary.data?.review_status} size={54} showPct photoUrl={photoUrl} />
             <div>
               <b>{user.name}</b>
               <div className="tiny muted">{user.designation}</div>

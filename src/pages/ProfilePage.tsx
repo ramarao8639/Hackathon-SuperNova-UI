@@ -8,6 +8,7 @@ import { api } from "../api/client"
 import type { DocList } from "../api/types"
 import { useAuth } from "../auth/AuthProvider"
 import { Avatar } from "../components/Avatar"
+import { refreshMyPhoto, useMyPhoto } from "../components/myPhoto"
 import { formatDate } from "../format"
 
 type ReviewStatus = "published" | "none" | null
@@ -28,7 +29,7 @@ export function ProfilePage() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<(typeof TABS)[number]>("About")
   const [photoError, setPhotoError] = useState("")
-  const [photoVersion, setPhotoVersion] = useState(0)
+  const photoUrl = useMyPhoto()
   const summary = useQuery({
     queryKey: ["summary", user?.id],
     enabled: Boolean(user),
@@ -70,7 +71,7 @@ export function ProfilePage() {
       <p className="mono">PeopleDesk</p>
       <h1 className="h1">Profile</h1>
       <div className="profile-head">
-        <Avatar name={user.name} pct={ring?.performance_pct} reviewStatus={ring?.review_status} size={96} showPct photoUrl={photoVersion ? `/api/me/photo?size=128&v=${photoVersion}` : null} />
+        <Avatar name={user.name} pct={ring?.performance_pct} reviewStatus={ring?.review_status} size={96} showPct photoUrl={photoUrl} />
         <div>
           <label className="btn">
             Update photo
@@ -80,16 +81,14 @@ export function ProfilePage() {
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0]
+                event.target.value = ""
                 if (!file) return
                 setPhotoError("")
                 const body = new FormData()
                 body.set("file", file)
                 api("/me/photo", { method: "POST", body })
-                  .then(() => {
-                    setPhotoVersion((value) => value + 1)
-                    queryClient.invalidateQueries({ queryKey: ["me"] })
-                  })
-                  .catch((error: Error) => setPhotoError(error.message))
+                  .then(() => refreshMyPhoto(queryClient))
+                  .catch((error: Error) => setPhotoError(error.message === "Sign in to continue" ? "Sign in again, then choose the photo." : error.message))
               }}
             />
           </label>

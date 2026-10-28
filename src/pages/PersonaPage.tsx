@@ -10,6 +10,7 @@ import { api } from "../api/client"
 import type { DocList, FeedItem } from "../api/types"
 import { CountUp } from "../components/bits"
 import { Avatar } from "../components/Avatar"
+import { useMyPhoto } from "../components/myPhoto"
 import { CareerPath } from "./CareerPage"
 import { Icon } from "../components/Icon"
 import { useAuth } from "../auth/AuthProvider"
@@ -51,6 +52,7 @@ type Row = { id: string; title: string; detail: string; due: string; kind: "bad"
 
 export function PersonaPage() {
   const { user } = useAuth()
+  const photoUrl = useMyPhoto()
   const { ask } = useGenie()
   const queryClient = useQueryClient()
   useEffect(() => {
@@ -185,7 +187,7 @@ export function PersonaPage() {
               {attentionCount ? `${attentionCount} thing${attentionCount > 1 ? "s" : ""} need your attention.` : "Nothing needs your attention right now."}
             </p>
           </div>
-          {user ? <Avatar name={user.name} pct={summary.data?.performance_pct} reviewStatus={summary.data?.review_status} size={84} showPct /> : null}
+          {user ? <Avatar name={user.name} pct={summary.data?.performance_pct} reviewStatus={summary.data?.review_status} size={84} showPct photoUrl={photoUrl} /> : null}
         </div>
         <form
           className="ask"
