@@ -565,12 +565,6 @@ export function GenieDock() {
                     <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(false, message)}>Not helpful</button>
                   </div>
                 ) : null}
-                {message.role === "genie" && !message.pending && !message.satisfaction && !message.askRating && message.followUps.length > 0 ? (
-                  <div className="row" style={{ marginTop: 8 }}>
-                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(true, message)}>Helpful</button>
-                    <button className="btn ghost sm" type="button" onClick={() => void sendFeedback(false, message)}>Not helpful</button>
-                  </div>
-                ) : null}
               </article>
             ))}
           </div>

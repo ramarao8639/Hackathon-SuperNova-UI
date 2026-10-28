@@ -34,7 +34,7 @@ export function MailActions({
 
   function openOutlook() {
     note()
-    window.location.href = draft.mailto
+    window.open(draft.outlook, "_blank", "noopener,noreferrer")
   }
 
   function eml() {
